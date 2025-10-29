@@ -1,123 +1,96 @@
+#include <limits>
+#include <cassert>
+#include <algorithm>
 #include "nitron/main.hpp"
 
-void check_pair() {
-    nitron::Pair<int,std::string> p (5, "Ahmad");
-    {
-        using namespace nitron;
-        std::cout << p << std::endl;
+void check_segment() {
+    using namespace nitron;
+    std::cout << "=== SegmentTree1 Comprehensive Test ===" << std::endl;
+
+    // --- 1. Test integer segment tree (sum) ---
+    SegmentTree1<int> sum_tree({1, 2, 3, 4, 5, 6, 7, 8, 9, 10}, std::plus<int>(), 0);
+    assert(sum_tree.query(0, 9) == 55);  // full sum
+    assert(sum_tree.query(3, 3) == 4);   // single element
+    assert(sum_tree.query(1, 4) == 14);  // range sum 2+3+4+5
+
+    // Circular query (e.g., [8,2] wraps around)
+    assert(sum_tree.query(8, 2) == (9 + 10 + 1 + 2 + 3)); 
+
+    // Update test
+    sum_tree.update(5, -10); // change index 5 (6 -> -10)
+    assert(sum_tree.query(0, 9) == 55 - 6 - 10); // total now 39
+    assert(sum_tree.query(4, 6) == (5 + (-10) + 7)); // =2
+    sum_tree.print(std::cout);
+
+    std::cout << "[OK] Integer sum tests passed.\n" << std::endl;
+
+    // --- 2. Test integer segment tree (min) ---
+    SegmentTree1<int> min_tree(
+        {9, 3, 8, 6, 7, 4, 10},
+        [](ConstReference<int> a, ConstReference<int> b){ return std::min(a, b); },
+        std::numeric_limits<int>::max()
+    );
+    assert(min_tree.query(0, 6) == 3);
+    assert(min_tree.query(2, 4) == 6);
+    min_tree.update(1, 11);
+    assert(min_tree.query(0, 6) == 4);
+    std::cout << "[OK] Integer min tests passed.\n" << std::endl;
+
+    // --- 3. Test integer segment tree (max) ---
+    SegmentTree1<int> max_tree(
+        {2, 9, 5, 1, 3, 8},
+        [](ConstReference<int> a, ConstReference<int> b){ return std::max(a, b); },
+        std::numeric_limits<int>::lowest()
+    );
+    assert(max_tree.query(0, 5) == 9);
+    max_tree.update(1, 0);
+    assert(max_tree.query(0, 5) == 8);
+    std::cout << "[OK] Integer max tests passed.\n" << std::endl;
+
+    // --- 4. Test string concatenation ---
+    SegmentTree1<std::string> str_tree(
+        {"ahmad", "ayman", "yaser", "hamzah"},
+        [](ConstReference<std::string> s1, ConstReference<std::string> s2){ 
+            return s1 + " " + s2;
+        },
+        std::string(" ")
+    );
+
+    auto s = str_tree.query(0, 3);
+    assert(s.find("ahmad") != std::string::npos);
+    assert(s.find("hamzah") != std::string::npos);
+    str_tree.update(1, "ali");
+    auto s2 = str_tree.query(0, 3);
+    assert(s2.find("ali") != std::string::npos);
+    str_tree.print(std::cout);
+    std::cout << "[OK] String concatenation tests passed.\n" << std::endl;
+
+    // --- 5. Exception safety ---
+    bool caught = false;
+    try {
+        sum_tree.query(100, 200); // out of range
+    } catch (const std::out_of_range&) {
+        caught = true;
     }
-}
-
-void check_trie() {
-    nitron::Trie<char> trie;
-    const std::vector<char> hello = {'h', 'e', 'l', 'l', 'o'};
-    const std::vector<char> hella = {'h', 'e', 'l', 'l', 'a'};
-    const std::vector<char> help  = {'h', 'e', 'l', 'p'};
-    const std::vector<char> king  = {'k', 'i', 'n', 'g'};
-    const std::string string = {'s', 't', 'r', 'i', 'n', 'g'};
-    trie.insert(hello .begin(), hello .end());
-    trie.insert(hella .begin(), hella .end());
-    trie.insert(help  .begin(), help  .end());
-    trie.insert(king  .begin(), king  .end());
-    trie.insert(string.begin(), string.end());
-    trie.erase (hella .begin(), hella .end());
-    
-    trie.print(std::cout);
-    
-    std::vector<std::vector<int>> sequences = {
-        {1, 2, 3, 4, 5},
-        {1, 2, 4, 8, 16},
-        {1, 1, 2, 3, 5}
-    };
-    auto sequences_to_trie = nitron::to_trie(sequences.begin(), sequences.end());
-    auto retrieved = sequences_to_trie.to_container_of_sequences<std::vector<std::vector<int>>>();
-    std::sort(sequences.begin(), sequences.end());
-    
-    nitron::print(sequences.begin(), sequences.end(), std::cout);
-    std::cout << std::endl;
-    sequences_to_trie.print(std::cout);
-    {
-        using namespace nitron;
-        nitron::print(retrieved.begin(), retrieved.end(), std::cout);
+    assert(caught);
+    caught = false;
+    try {
+        sum_tree.update(999, 42); // out of range
+    } catch (const std::out_of_range&) {
+        caught = true;
     }
-    std::cout << std::endl;
-    std::cout << "Does retrieved equal original? " << (sequences == retrieved) << std::endl;
+    assert(caught);
+    std::cout << "[OK] Exception tests passed.\n" << std::endl;
 
-    std::vector<std::vector<int>> vector_of_vectors = {
-        { 1, 2, 3, 4, 5, 6, 7 },
-        { 1, 3, 2, 4, 5, 6, 7 },
-        { 1, 2, 3, 4, 6, 7, 5 }
-    };
-    nitron::trie_sort(vector_of_vectors);
-    {
-        using namespace nitron;
-        std::cout << vector_of_vectors << std::endl;
-    }
-}
-
-void check_cypher() {
-    nitron::CryptSystem::function function = std::bit_xor<size_t>();
-    nitron::CryptSystem master (function, function);
-    
-    {
-        size_t plain     = 12345678910ull;
-        size_t key       = 14392421053ull;
-        size_t cypher    = master.encrypt(plain, key);
-        size_t retrieved = master.decrypt(cypher, key);
-        std::cout << plain << " -> " << cypher << " -> " << retrieved << std::endl;
-    }
-    
-    nitron::CryptSystem::function caeser_enc = [](size_t p, size_t k) -> size_t {
-        const size_t MASK = 0xFull;
-        for (size_t i = 0; i < 16; ++i) {
-            size_t shift = (i << 2ull);
-            size_t value = ((p >> shift) & MASK);
-            size_t key   = ((k >> shift) & MASK);
-            size_t mask  = (MASK << shift);
-            p &= ~mask;
-            value = ((value + key) & MASK);
-            p |= (value << shift);
-        }
-        return p;
-    };
-
-    nitron::CryptSystem::function caeser_dec = [](size_t c, size_t k) -> size_t {
-        const size_t MASK = 0xFull;
-        for (size_t i = 0; i < 16; ++i) {
-            size_t shift = (i << 2ull);
-            size_t value = ((c >> shift) & MASK);
-            size_t key   = ((k >> shift) & MASK);
-            size_t mask  = (MASK << shift);
-            c &= ~mask;
-            value = ((value + MASK + 1 - key) & MASK);
-            c |= (value << shift);
-        }
-        return c;
-    };
-
-    nitron::CryptSystem server (caeser_enc, caeser_dec);
-
-    {
-        size_t plain     = 12345678910ull;
-        size_t key       = 14392421053ull;
-        size_t cypher    = server.encrypt(plain, key);
-        size_t retrieved = server.decrypt(cypher, key);
-        std::cout << plain << " -> " << cypher << " -> " << retrieved << std::endl;
-    }
+    std::cout << "=== All SegmentTree1 Tests Passed Successfully ===" << std::endl;
 }
 
 int main() {
     std::cout << std::boolalpha;
-    
-    check_pair();
+
+    check_segment();
     std::cout << std::endl;
-    
-    check_trie();
-    std::cout << std::endl;
-    
-    check_cypher();
-    std::cout << std::endl;
-    
+
     std::cout << "Hello World" << std::endl;
     std::cout << "cplusplus version: " << __cplusplus << std::endl;
     return 0;
