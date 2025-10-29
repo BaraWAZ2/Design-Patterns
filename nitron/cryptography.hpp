@@ -1,7 +1,6 @@
 // cryptography.hpp
 #pragma once
 
-#include <functional>
 #include "core.hpp"
 
 namespace nitron {
